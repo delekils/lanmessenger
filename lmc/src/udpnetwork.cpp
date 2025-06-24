@@ -149,21 +149,27 @@ void lmcUdpNetwork::sendDatagram(QHostAddress remoteAddress, QByteArray& datagra
 		return;
 
 	lmcTrace::write("Sending UDP datagram to " + remoteAddress.toString() + ":" + QString::number(nUdpPort));
-	pUdpSender->writeDatagram(datagram.data(), datagram.size(), remoteAddress, nUdpPort);
+        qint64 sent = pUdpSender->writeDatagram(datagram.data(), datagram.size(), remoteAddress, nUdpPort);
+        if(sent < 0)
+                lmcTrace::write("Warning: UDP datagram send failed");
 }
 
 bool lmcUdpNetwork::startReceiving(void) {
 	lmcTrace::write("Binding UDP listener to port " + QString::number(nUdpPort));
 
-    if(pUdpReceiver->bind(QHostAddress::AnyIPv4, nUdpPort, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint)) {
-		lmcTrace::write("Success");
-		lmcTrace::write("Joining multicast group " + multicastAddress.toString() +
-			" on interface " + multicastInterface.humanReadableName());
-		bool joined = pUdpReceiver->joinMulticastGroup(multicastAddress, multicastInterface);
-		lmcTrace::write((joined ? "Success" : "Failed"));
-		connect(pUdpReceiver, SIGNAL(readyRead()), this, SLOT(processPendingDatagrams()));
-		return true;
-	}
+    QHostAddress bindAddress = (ipAddress.protocol() == QAbstractSocket::IPv6Protocol) ?
+                QHostAddress::AnyIPv6 : QHostAddress::AnyIPv4;
+
+    if(pUdpReceiver->bind(bindAddress, nUdpPort,
+                           QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint)) {
+                lmcTrace::write("Success");
+                lmcTrace::write("Joining multicast group " + multicastAddress.toString() +
+                        " on interface " + multicastInterface.humanReadableName());
+                bool joined = pUdpReceiver->joinMulticastGroup(multicastAddress, multicastInterface);
+                lmcTrace::write((joined ? "Success" : "Failed"));
+                connect(pUdpReceiver, SIGNAL(readyRead()), this, SLOT(processPendingDatagrams()));
+                return true;
+        }
 
 	lmcTrace::write("Failed");
 	return false;
@@ -177,12 +183,11 @@ void lmcUdpNetwork::parseDatagram(QString* lpszAddress, QByteArray& baDatagram) 
 }
 
 void lmcUdpNetwork::setDefaultBroadcast(void) {
-	if(ipAddress.protocol() != QAbstractSocket::IPv4Protocol)
-		return;
-
-	//	The network broadcast address is obtained by ORing the host address and
-	//	bit inversed subnet mask
-	quint32 ipv4 = ipAddress.toIPv4Address();
-	quint32 invMask = ~(subnetMask.toIPv4Address());
-	defBroadcast = QHostAddress((ipv4 | invMask));
+        if(ipAddress.protocol() == QAbstractSocket::IPv4Protocol) {
+                quint32 ipv4 = ipAddress.toIPv4Address();
+                quint32 invMask = ~(subnetMask.toIPv4Address());
+                defBroadcast = QHostAddress((ipv4 | invMask));
+        } else if(ipAddress.protocol() == QAbstractSocket::IPv6Protocol) {
+                defBroadcast = QHostAddress(QStringLiteral("ff02::1"));
+        }
 }
