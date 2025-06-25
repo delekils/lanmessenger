@@ -81,8 +81,8 @@ public:
 
 private:
 	RSA* pRsa;
-	QMap<QString, EVP_CIPHER_CTX> encryptMap;
-	QMap<QString, EVP_CIPHER_CTX> decryptMap;
+       QMap<QString, EVP_CIPHER_CTX*> encryptMap;
+       QMap<QString, EVP_CIPHER_CTX*> decryptMap;
 	int bits;
 	long exponent;
 };
