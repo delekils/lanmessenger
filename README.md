@@ -193,3 +193,12 @@ System tray support
 ===================
 On desktops that do not have a system tray, the system tray options will
 be grayed out in the Preferences dialog.
+
+Unit tests
+==========
+A basic regression test for `QMessageBrowser` is available under `tests/qmessagebrowser`.
+Build and run it using qmake:
+
+    qmake tests/qmessagebrowser/qmessagebrowser.pro
+    make
+    ./tst_qmessagebrowser
